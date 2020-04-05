@@ -34,17 +34,19 @@ Amplify.configure({
  * Page displayed when (explicitly) signed out
  */
 const SignedoutPage = () => {
+  console.log("signed out");
   return <div>You are signed out</div>;
 };
 
 /**
  * Normal page
  */
-const HomePage = ({ userInfo }) => {
-  /*useEffect(()=>{
-    if ( !userInfo)
+const HomePage = ({ userInfo, alwaysLogin }) => {
+  useEffect(() => {
+    if (alwaysLogin && !userInfo) {
       Auth.federatedSignIn()
-  },[userInfo])*/
+    }
+  }, [userInfo,alwaysLogin]);
   return (
     <div>
       {userInfo ? (
@@ -61,6 +63,7 @@ const HomePage = ({ userInfo }) => {
 
 function App() {
   const [userInfo, setUserInfo] = useState();
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     /**
@@ -78,7 +81,7 @@ function App() {
        * Note if the user as previously signed it and not out, it won't prompt, just pull info from localStorage
        */
       .then((user) => setUserInfo(user))
-      .catch((err) => setUserInfo(null));
+      .finally(() => setLoading(false));
   }, []);
 
   return (
@@ -96,8 +99,12 @@ function App() {
       </header>
       <Router>
         <Switch>
-          <Route path="/">
-            <HomePage userInfo={userInfo} />
+          <Route path={signoutPath}>
+            <SignedoutPage />
+          </Route>
+          <Route exact path="/">
+            {!loading && <HomePage userInfo={userInfo} alwaysLogin />}
+            
           </Route>
         </Switch>
       </Router>
