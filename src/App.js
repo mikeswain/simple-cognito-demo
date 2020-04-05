@@ -1,12 +1,11 @@
 import React, { useEffect, useState } from "react";
 import "./App.css";
 import Amplify, { Auth } from "aws-amplify";
-import { Route, BrowserRouter as Router, Switch } from "react-router-dom";
 
 // Need to supply the https url on which cognito will redirect to after login
 // This must be registered in the client config in AWS. Note it allows localhost to be http
 const appUrl = process.env.PUBLIC_URL || window.location.origin;
-const signoutPath = "/signout";
+const signoutPath = "/signout"
 
 Amplify.configure({
   Auth: {
@@ -21,49 +20,17 @@ Amplify.configure({
         "email",
         "profile",
         "openid",
-        "aws.cognito.signin.user.admin",
+        "aws.cognito.signin.user.admin"
       ],
       redirectSignIn: appUrl, // cognito redirects to this on login
       redirectSignOut: appUrl + signoutPath, // if you want to route to a special signout
-      responseType: "token",
-    },
-  },
-});
-
-/**
- * Page displayed when (explicitly) signed out
- */
-const SignedoutPage = () => {
-  console.log("signed out");
-  return <div>You are signed out</div>;
-};
-
-/**
- * Normal page
- */
-const HomePage = ({ userInfo, alwaysLogin }) => {
-  useEffect(() => {
-    if (alwaysLogin && !userInfo) {
-      Auth.federatedSignIn()
+      responseType: "token"
     }
-  }, [userInfo,alwaysLogin]);
-  return (
-    <div>
-      {userInfo ? (
-        <p>
-          Signed in user:{userInfo.username} email:
-          {userInfo.attributes.email}
-        </p>
-      ) : (
-        <p>Please sign in</p>
-      )}
-    </div>
-  );
-};
+  }
+});
 
 function App() {
   const [userInfo, setUserInfo] = useState();
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     /**
@@ -72,7 +39,7 @@ function App() {
      * info in Local Storage
      */
     Auth.currentAuthenticatedUser({
-      bypassCache: false,
+      bypassCache: false
     })
       /**
        * Obtain and store the authenticated session info in a state variable - in a real app you might want to dispatch this
@@ -80,34 +47,41 @@ function App() {
        * userInfo.signInUserSession.accessToken.jwtToken is signed token for API Calls
        * Note if the user as previously signed it and not out, it won't prompt, just pull info from localStorage
        */
-      .then((user) => setUserInfo(user))
-      .finally(() => setLoading(false));
-  }, []);
+      .then(user => setUserInfo(user))
+      .catch(err =>{
+        /**
+         * Uncomment to always sign in on mount
+        if ( window.location.pathname !== signoutPath ) // provided not explicitly signed out otherwise loop!
+          Auth.federatedSignIn()
+        */
+      });
+  },[]);
 
   return (
     <div className="App">
       <header className="App-header">
         <div>
-          {!!userInfo ? (
-            <button onClick={() => Auth.signOut()}>Sign Out</button>
-          ) : (
+          {(userInfo && (
+            <>
+              <p>
+                Current user:{userInfo.username} email:
+                {userInfo.attributes.email}
+              </p>
+              <div>
+                <button
+                  onClick={() => Auth.signOut().then(() => setUserInfo(null))}
+                >
+                  Sign Out
+                </button>
+              </div>
+            </>
+          )) || (
             <div>
               <button onClick={() => Auth.federatedSignIn()}>Sign In</button>
             </div>
           )}
         </div>
       </header>
-      <Router>
-        <Switch>
-          <Route path={signoutPath}>
-            <SignedoutPage />
-          </Route>
-          <Route exact path="/">
-            {!loading && <HomePage userInfo={userInfo} alwaysLogin />}
-            
-          </Route>
-        </Switch>
-      </Router>
     </div>
   );
 }
